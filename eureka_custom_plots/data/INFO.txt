@@ -1,0 +1,1 @@
+Some data files (such as the input of eucus_stage3_2d-lightcurves.py) might be too large for github and are not supplied here.
