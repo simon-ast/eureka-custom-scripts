@@ -29,7 +29,7 @@ def main():
 
     # SPECTRUM AFTER STEP "optimal spectral extraction"
     # Has the shape (TIME, DISPERSION-DIRECTION)
-    spec = data["optspec"][()]
+    spec = data["stdspec"][()]
 
     # Normalization for each time-column
     normspec = spec / np.ma.mean(spec, axis=0)
@@ -68,6 +68,10 @@ def plot_dynamic_lc(x_array, y_array, z_array,
     # TODO: Plot location (x) of flagged pixel columns
     for idx in bad_px_idx:
         ax.axvline(x_array[idx], c="black", alpha=0.5, zorder=10000)
+
+        # Place text relative to x-coordinate
+        y_pos = 7000 + x_array[idx] / x_array[-1] * 10000
+        ax.annotate(text=f"{idx}", xy=(x_array[idx], y_pos))
 
     plt.colorbar(
         dyn_lc, label="Flux normalized to mean per channel"

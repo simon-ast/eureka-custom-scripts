@@ -97,7 +97,7 @@ def plot_precision(wavelength, mad_values, fit_par, flagged_indices):
     # Plot MAD values
     ax.scatter(wavelength, mad_values / 1e3, color="tab:blue", s=mad_ms)
     ax.set(xlabel="Wavelength [$\\mu \\mathrm{m}$]",
-           ylabel="MAD [ppt]")
+           ylabel="MAD [ppt]", ylim=(2, 55))
 
     # Overplot flagged indices
     ax.scatter(wavelength[flagged_indices], mad_values[flagged_indices] / 1e3,
