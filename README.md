@@ -19,6 +19,15 @@ stages in *Eureka!*.
 plotting script
 
 
+## `eureka_custom_steps`
+Some additional steps to be performed on various data products from the 
+*Eureka!* stages.
+- `data/`: Storage for data input into custom routines
+- `output/`: Storage for custom routine outputs
+- All custom routines start with an **Overview** header that describes the
+plotting script
+
+
 ## `eureka_environment`
 The two files in here should help with the creation of a working Python 
 environment for *Eureka!* (which should probably be created within a venv).

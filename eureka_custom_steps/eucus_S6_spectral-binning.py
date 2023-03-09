@@ -7,19 +7,23 @@ fitting has been applied.
 
 """
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pandas as pd
 from util import rc_setup
 
 # GLOBALS
 DATA_DIR = "data/S6_spectral_binning"
-PLOT_DIR = "plots/S6_spectral_binning"
-OUT_DIR = "output/S6_spectral_binning"
+# TODO: ACCESS MASK FROM SEPARATE TOP DIR
+MASK_DIR = "../eureka-custom-scripts/eureka_custom_plots/output"
+OUT_DIR = "output/S6_spectral-binning"
 
 # PARAMETERS
-BIN_SIZE = 4
+CMAP = "tab10"
+SAVE_EXT = "pdf"
+BIN_SIZE = 2
 # TODO: READ BAD PIXEL COLUMNS FROM FILE
-MASK_IDX = [7, 12, 14, 26, 40, 48, 69]
+MASK_IDX = np.genfromtxt("input/bad_indices_x.dat", delimiter=",", dtype=int)
 
 
 def main():
@@ -31,7 +35,7 @@ def main():
     optspex_nat = read_spectrum(optspex_file)
     stdspec_nat = read_spectrum(stdspec_file)
 
-    # TODO: Need to mask spectrum
+    # Mask the spectrum with NaNs
     optspex_nat_ma = mask_data(optspex_nat, MASK_IDX)
 
     # Compute weighted arithmetic mean of spectra
@@ -39,15 +43,23 @@ def main():
     stdspec_bin = spectrum_binning(stdspec_nat, bin_size=BIN_SIZE)
 
     # Plot the desired spectra and comparisons
+    # OPTIMAL SPECTRAL EXTRACTION
     spectra = [optspex_nat, optspex_bin]
-    labels = ["OS_NAT", "OS_BINT"]
-    plot_spectrum_total(spectra, labels)
-    plt.show()
+    labels = ["Native", f"{BIN_SIZE} px"]
+    plot_spectrum_total(spectra, labels, "Optimal spectral extraction",
+                        save_title="optspex_binnning")
 
+    # STANDARD SPECTRUM (APERTURE SUM)
     spectra = [stdspec_nat, stdspec_bin]
-    labels = ["ST_NAT", "ST_BINT"]
-    plot_spectrum_total(spectra, labels)
-    plt.show()
+    labels = ["Native", f"{BIN_SIZE} px"]
+    plot_spectrum_total(spectra, labels, "Standard (aperture sum) spectrum",
+                        save_title="stdspec_binning")
+
+    # Save all spectra
+    stdspec_nat.to_csv(f"{OUT_DIR}/stdspec_native.csv", sep="\t")
+    stdspec_bin.to_csv(f"{OUT_DIR}/stdspec_{BIN_SIZE}px.csv", sep="\t")
+    optspex_nat_ma.to_csv(f"{OUT_DIR}/optspec_masked_native.csv", sep="\t")
+    optspex_bin.to_csv(f"{OUT_DIR}/optspec_masked_{BIN_SIZE}px.csv", sep="\t")
 
 
 def read_spectrum(filename):
@@ -84,6 +96,11 @@ def spectrum_binning(pd_spectrum, bin_size):
         temp_frame_raw = pd_spectrum[idx:idx + bin_size]
         temp_frame = temp_frame_raw.dropna().reset_index()
         temp_size = temp_frame.shape[0]
+
+        # If the bin is empty, skip it
+        if temp_size == 0:
+            idx += bin_size
+            continue
 
         # Calculate wavelength centre and bounds
         temp_wavel = np.sum(temp_frame.wavelength) / temp_size
@@ -130,34 +147,41 @@ def weighted_arithmetic_mean(subframe):
     return wam, wam_std
 
 
-def plot_spectrum_ind(axis, spectrum, label):
+def plot_spectrum_ind(axis, spectrum, label, colour):
     """Plot individual spectrum onto axis object"""
     axis.errorbar(
         x=spectrum.wavelength, y=spectrum["rp^2_value"],
         xerr=[spectrum.bin_width, spectrum.bin_width],
         yerr=[spectrum["rp^2_errorneg"], spectrum["rp^2_errorpos"]],
-        label=label, ls=" ", marker="o"
+        label=label, ls=" ", marker="o", color=colour
     )
 
 
-def plot_spectrum_total(spectrum_df_arr, label_arr):
+def plot_spectrum_total(spectrum_df_arr, label_arr, fig_title, save_title):
     """Plot all desired spectra in single plot"""
-    # Number of spectra submitted
+    # Number of spectra submitted + colour map
     n_spec = len(spectrum_df_arr)
+    colours = mpl.colormaps[CMAP].resampled(n_spec)(range(n_spec))
 
     # Plot all spectra
     fig, ax = plt.subplots(figsize=(10, 6))
 
+    # Plot each spectrum
     for idx in range(n_spec):
-        plot_spectrum_ind(ax, spectrum_df_arr[idx], label_arr[idx])
+        plot_spectrum_ind(ax, spectrum_df_arr[idx], label_arr[idx],
+                          colours[idx])
 
     ax.set(
         xlabel="$\\lambda$ [$\\mu \\mathrm{m}$]",
-        ylabel="Transit Depth"
+        ylabel="Transit Depth",
+        title=f"{fig_title}"
     )
 
     plt.legend()
     plt.tight_layout()
+
+    # Save the figure
+    plt.savefig(f"{OUT_DIR}/{save_title}.{SAVE_EXT}")
 
 
 if __name__ == "__main__":
