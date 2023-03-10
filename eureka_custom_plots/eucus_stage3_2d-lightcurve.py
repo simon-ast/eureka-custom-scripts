@@ -29,15 +29,17 @@ def main():
 
     # SPECTRUM AFTER STEP "optimal spectral extraction"
     # Has the shape (TIME, DISPERSION-DIRECTION)
-    spec = data["stdspec"][()]
+    stdspec = data["stdspec"][()]
+    optspec = data["optspec"][()]
 
     # Normalization for each time-column
-    normspec = spec / np.ma.mean(spec, axis=0)
+    n_stdspec = stdspec / np.ma.mean(stdspec, axis=0)
+    n_optspec = optspec / np.ma.mean(optspec, axis=0)
 
     # AUXILIARY DATA: Number of integrations, x-direction pixel-number,
     # assigned wavelength in microns
-    n_int = np.arange(spec.shape[0])
-    n_pix = np.arange(spec.shape[1]) + 1    # Should start at 1
+    n_int = np.arange(stdspec.shape[0])
+    n_pix = np.arange(stdspec.shape[1]) + 1    # Should start at 1
     wavel = data["wave_1d"][()]
 
     # TODO: Read-in bad column indices
@@ -45,10 +47,11 @@ def main():
                             dtype=int)
 
     # Plot and save dynamic light curve and precision plot
-    plot_dynamic_lc(wavel, n_int, normspec, "RdYlBu_r", "wavelength", bad_col)
+    plot_dynamic_lc(wavel, n_int, n_optspec, "RdYlBu_r", "wavelength", bad_col)
 
     # Calculate MAD values for each normalised light curve
-    save_mad(wavel, None, 5.3, normspec, "mad_values")
+    save_mad(wavel, None, 5.3, n_stdspec, "mad_values_std")
+    save_mad(wavel, None, 5.3, n_optspec, "mad_values_opt")
 
 
 def plot_dynamic_lc(x_array, y_array, z_array,

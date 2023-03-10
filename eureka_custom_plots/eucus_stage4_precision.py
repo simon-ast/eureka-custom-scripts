@@ -13,8 +13,11 @@ from util import rc_setup
 # GLOBALS
 PLOT_DIR = "plots/"
 PLOT_TYPE = "png"
-MAD_FILE = "output/mad_values.dat"
+MAD_FILE = "output/mad_values_opt.dat"
 ANNOTATE = False
+
+
+#def identify_outlier()
 
 
 def main():
@@ -22,8 +25,31 @@ def main():
     # Generate data frame with wavelength and MAD values
     mad_data = read_mad(MAD_FILE)
 
-    # Calculate precision
-    fit_par, _ = fit_precision(mad_data.wavel, mad_data.mad_values)
+    # First generate a raw plot
+    plot_precision(mad_data.wavel, mad_data.mad_values, fit_par=None,
+                   flagged_indices=None, savename="eucus_precision_raw")
+
+    # TODO: Form Yani's suggestions: Fit the exponential function to
+    #  only a few of the "good" data points, as to not contaminate the
+    #  fit with outliers
+    # CHOOSE A RANDOM RANGE FOR NOW, but plot the fit
+    max_dp = mad_data.wavel.shape[0]
+    fit_range = [i for i in range(7)] + [i for i in range(90, 120)] + \
+                [i for i in range(200, 220)] + \
+                [i for i in range(235, max_dp)]
+
+    # Estimate noise with exponential fit
+    fit_par, cov_mat = fit_precision(mad_data.wavel[fit_range],
+                                     mad_data.mad_values[fit_range])
+
+    # TODO: Covariance can not be estimated
+
+    # Create separate fit plot
+    plot_precision(mad_data.wavel[fit_range],
+                   mad_data.mad_values[fit_range],
+                   fit_par=fit_par,
+                   flagged_indices=None,
+                   savename="eucus_precision_fit")
 
     # Identify outliers from the fitted precision
     # TODO: For now, I am trying to identify outliers by eye and mark
@@ -32,7 +58,8 @@ def main():
                             dtype=int)
 
     # Plot a tidy plot
-    plot_precision(mad_data.wavel, mad_data.mad_values, fit_par, bad_idx)
+    plot_precision(mad_data.wavel, mad_data.mad_values, fit_par,
+                   flagged_indices=bad_idx, savename="eucus_precision_marked")
 
 
 def read_mad(filename):
@@ -84,7 +111,8 @@ def large_outlier_rejection(mad_values, threshold):
     return test_4
 
 
-def plot_precision(wavelength, mad_values, fit_par, flagged_indices):
+def plot_precision(wavelength, mad_values, fit_par, savename,
+                   flagged_indices=None):
     """
     Plots the MAD value for each light curve, and marks pixels that
     represent large outliers
@@ -100,8 +128,10 @@ def plot_precision(wavelength, mad_values, fit_par, flagged_indices):
            ylabel="MAD [ppt]", ylim=(2, 55))
 
     # Overplot flagged indices
-    ax.scatter(wavelength[flagged_indices], mad_values[flagged_indices] / 1e3,
-               c="tab:red", s=mad_ms, marker="x", label="Flagged Values")
+    if flagged_indices is not None:
+        ax.scatter(wavelength[flagged_indices],
+                   mad_values[flagged_indices] / 1e3,
+                   c="tab:red", s=mad_ms, marker="x", label="Flagged Values")
 
     # TODO: Use annotations if necessary to find bad values
     if ANNOTATE is True:
@@ -109,13 +139,15 @@ def plot_precision(wavelength, mad_values, fit_par, flagged_indices):
             ax.annotate(text=f"{i}", xy=(wavelength[i], mad_values[i] / 1e3))
 
     # Plot fitted precision (TODO: Excluded for now)
-    # wl_prec = exponential(wavelength, *fit_par) / 1e3
-    # ax.plot(wavelength, wl_prec, ls="--", lw=2.5, c="tab:red")
+    if fit_par is not None:
+        wl_prec = exponential(wavelength, *fit_par) / 1e3
+        ax.plot(wavelength, wl_prec, ls="--", lw=2.5, c="black",
+                label="Test-Fit")
 
     plt.legend()
     plt.tight_layout()
     plot_loc = f"{PLOT_DIR}/stage4_precision"
-    plt.savefig(f"{plot_loc}/eucus_precision.{PLOT_TYPE}", dpi=600)
+    plt.savefig(f"{plot_loc}/{savename}.{PLOT_TYPE}", dpi=600)
 
 
 def exponential(x, a, b, c):
